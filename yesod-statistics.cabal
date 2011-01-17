@@ -1,0 +1,24 @@
+name:                yesod-statistics
+version:             0.1
+synopsis:            A tool for logging requests and aggregating/viewing the logged data
+homepage:            http://github.com/pbrisbin/yesod-statistics
+license:             BSD3
+license-file:        LICENSE
+author:              Patrick Brisbin
+maintainer:          me@pbrisbin.com
+category:            Web, Yesod
+build-type:          Simple
+cabal-version:       >=1.2
+
+library
+  -- Modules exported by the library.
+  exposed-modules: Yesod.Helpers.Statistics
+  
+  -- Packages needed in order to build this package.
+  build-depends: base, yesod
+
+  ghc-options: -Wall
+  
+source-repository head
+  type:         git
+  location:     git://github.com/pbrisbin/yesod-statistics.git

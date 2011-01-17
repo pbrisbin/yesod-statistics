@@ -1,0 +1,5 @@
+*.o
+*.hi
+*.aes
+*.s3db
+dist/

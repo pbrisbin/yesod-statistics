@@ -65,62 +65,61 @@ mkYesodSub "Stats"
     / StatsR GET
     |]
 
+
 -- for now just a simple table
 getStatsR :: (YesodStats m,
-              YesodPersist m, PersistBackend (YesodDB m (GHandler s m)))
+              YesodPersist m, 
+              PersistBackend (YesodDB m (GHandler s m)))
           => GHandler s m RepHtml
 getStatsR = do
     stats <- runDB $ selectList [] [StatsEntryDateDesc] 0 0
     defaultLayout $ do
-    setTitle $ string "Logged Requests"
-    addCassius [$cassius|
-        .yesod_stats table
-            margin-left: auto
-            margin-right: auto
+        setTitle $ string "Logged Requests"
+        addCassius [$cassius|
+            .yesod_stats th
+                text-align: left
+                border-bottom: solid 1px
 
-        .yesod_stats th
-            border-bottom: solid 1px
+            .yesod_stats td
+                padding-left:  10px
+                padding-right: 10px
+            |]
 
-        .yesod_stats td
-            padding-left:  5px
-            padding-right: 5px
-        |]
-
-    addHamlet [$hamlet|
-    .yesod_stats
-        %h1 Logged Requests
-        %hr
-
-        %table
-            %tr
-                %th Request id
-                %th Date
-                %th Method
-                %th Path info
-                %th Query string
-                %th Server name
-                %th Server port
-                %th SSL
-                %th Remote host
-
-            $forall stats stat
+        addHamlet [$hamlet|
+        .yesod_stats
+            %h1 Logged Requests
+            %table
                 %tr
-                    %td $string.statsEntryIdent.snd.stat$
-                    %td $string.format.statsEntryDate.snd.stat$
-                    %td $string.statsEntryRequestMethod.snd.stat$
-                    %td $string.statsEntryPathInfo.snd.stat$
-                    %td $string.statsEntryQueryString.snd.stat$
-                    %td $string.statsEntryServerName.snd.stat$
-                    %td $string.show.statsEntryServerPort.snd.stat$
-                    %td $string.yesno.statsEntryIsSecure.snd.stat$
-                    %td $string.statsEntryRemoteHost.snd.stat$
-    |]
+                    %th Request id
+                    %th Date
+                    %th Method
+                    %th Path info
+                    %th Query string
+                    %th Server name
+                    %th Server port
+                    %th SSL
+                    %th Remote host
+
+                $forall stats stat
+                    %tr
+                        %td $string.statsEntryIdent.snd.stat$
+                        %td $string.format.statsEntryDate.snd.stat$
+                        %td $string.statsEntryRequestMethod.snd.stat$
+                        %td $string.statsEntryPathInfo.snd.stat$
+                        %td $string.statsEntryQueryString.snd.stat$
+                        %td $string.statsEntryServerName.snd.stat$
+                        %td $string.show.statsEntryServerPort.snd.stat$
+                        %td $string.yesno.statsEntryIsSecure.snd.stat$
+                        %td $string.statsEntryRemoteHost.snd.stat$
+        |]
     where
+        -- some formatting
         format = formatTime defaultTimeLocale "%d %b %Y %X %z"
         yesno b = if b then "Yes" else "No"
 
 logRequest :: (YesodStats m,
-               YesodPersist m, PersistBackend (YesodDB m (GHandler s m)))
+               YesodPersist m, 
+               PersistBackend (YesodDB m (GHandler s m)))
            => GHandler s m ()
 logRequest = do
     mentry <- parseRequest

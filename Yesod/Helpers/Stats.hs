@@ -6,7 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -------------------------------------------------------------------------------
---
+-- |
 -- Module        : Yesod.Helpers.Stats
 -- Copyright     : Patrick Brisbin
 -- License       : as-is

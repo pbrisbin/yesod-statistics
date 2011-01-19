@@ -4,7 +4,7 @@
 --
 -- pbrisbin 2010
 --
--- How to use Yesod.Stats
+-- How to use Yesod.Helpers.Stats
 --
 module Test where
 
@@ -17,12 +17,10 @@ import Database.Persist.GenericSql
 
 data TestApp = TestApp { connPool :: ConnectionPool }
 type Handler = GHandler TestApp TestApp
-type Widget  = GWidget TestApp TestApp
 
 mkYesod "TestApp" [$parseRoutes| 
 /             RootR GET 
 /test/#String TestR GET
-
 /stats StatsR Stats getStats
 |]
 
@@ -42,35 +40,34 @@ withConnectionPool = withSqlitePool "stats.s3db" 10
 
 getRootR :: Handler RepHtml
 getRootR = do
-    let links = ["foo", "bar", "baz", "bat"]
+    logRequest
+
+    let links = [ "foo", "bar", "baz", "bat" ]
     defaultLayout $ do
-    setTitle  $ string "test homepage"
-    addHamlet [$hamlet|
-        #header
+        setTitle  $ string "test homepage"
+        addHamlet [$hamlet|
             %h1 Test Page
             %hr
-        #body
+
             %p 
-                Welcome to my stats test page. Please make some requests by 
-                clicking on the links below. After doing so head to the 
-                stats page and see the collected data
+                Welcome to my stats test page. Please make some requests 
+                by clicking on the links below. After doing so, head to 
+                the 
+                %a!href="/stats" stats page
+                \ and see the collected data.
 
             %h3 Links
 
             $forall links link
                 %p
                     %a!href=@TestR.link@ $string.link$
-
-            %p
-                And the 
-                %a!href="/stats" stats
-                \ page.
-        |] -- why can't i put @StatsR@ here?
+            |]
 
 getTestR :: String -> Handler RepHtml
 getTestR name = do
     logRequest
-    setMessage [$hamlet| %em request for $string.name$ was logged |]
+
+    setMessage [$hamlet| %em your request for $string.name$ was logged |]
     redirect RedirectTemporary RootR
 
 main :: IO ()
@@ -78,7 +75,6 @@ main = putStrLn "Loaded" >> withCommentTest (run 3000)
 
 withCommentTest :: (Application -> IO a) -> IO a
 withCommentTest f = withConnectionPool $ \p -> do
-    -- | make sure you run the migration to create the necessary tables
     runSqlPool (runMigration migrateStats) p
     let h = TestApp p
     toWaiApp h >>= f

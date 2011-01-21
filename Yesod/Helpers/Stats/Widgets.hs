@@ -48,8 +48,6 @@ overallStats = do
 
     addHamlet [$hamlet|
         .stats_general
-            %h3 General Statistics
-
             %table
                 %tr
                     %th stats generated:

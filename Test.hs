@@ -37,7 +37,9 @@ instance YesodStats TestApp where
     requestIdent _         = return Nothing
 
     viewLayout = do
+        addHamlet [$hamlet| %h3 General statistics |]
         overallStats 
+
         addHamlet [$hamlet| %h3 Files requested |]
         topRequests ("foo pages", "foo")
         topRequests ("bar, baz, and bat pages", "ba?")

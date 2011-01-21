@@ -32,19 +32,14 @@ instance YesodPersist TestApp where
     runDB db = fmap connPool getYesod >>= runSqlPool db
 
 instance YesodStats TestApp where
-    blacklist = return []
-
-    requestIdent RootR     = return $ Just "homepage"
-    requestIdent (TestR s) = return $ Just ("test_" ++ s)
-    requestIdent _         = return Nothing
-
+    blacklist  = return []
     viewLayout = do
         addHamlet [$hamlet| %h3 General statistics |]
         overallStats 
 
         addHamlet [$hamlet| %h3 Files requested |]
-        topRequests ("foo pages", "foo")
-        topRequests ("bar, baz, and bat pages", "ba?")
+        topRequests ("foo pages", "^/test/foo.*")
+        topRequests ("bar, baz, and bat pages", "^/test/ba?")
 
 withConnectionPool :: MonadInvertIO m => (ConnectionPool -> m a) -> m a
 withConnectionPool = withSqlitePool "stats.s3db" 10

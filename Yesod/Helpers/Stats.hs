@@ -41,9 +41,7 @@ import qualified Data.ByteString as B
 
 share2 mkPersist (mkMigrate "migrateStats") [$persist|
 StatsEntry
-    ident         String  Eq
     date          UTCTime Asc Desc
-
     requestMethod String
     pathInfo      String
     queryString   String
@@ -63,11 +61,6 @@ class (Yesod m,
        PersistBackend (YesodDB m (GHandler Stats m))) => YesodStats m where 
     -- | A list of IPs to not log (localhost, etc)
     blacklist :: GHandler s m [String]
-
-    -- | A unique \"friendly\" identifier to use for each route logged,
-    --   setting this to 'Nothing' will prevent the route from being
-    --   logged at all.
-    requestIdent :: Route m -> GHandler s m (Maybe String)
 
     -- | This is the main \"view stats\" page. Easiest thing to do is
     --   import some pre-built widgets from
@@ -116,22 +109,11 @@ getLogR = do
     stats <- loggedRequests
     defaultLayout $ do
         setTitle $ string "Logged Requests"
-        addCassius [$cassius|
-            .yesod_stats th
-                text-align: left
-                border-bottom: solid 1px
-
-            .yesod_stats td
-                padding-left:  10px
-                padding-right: 10px
-            |]
-
         addHamlet [$hamlet|
-            .yesod_stats
+            .stats_full_log
                 %h1 Logged Requests
                 %table
                     %tr
-                        %th Request id
                         %th Date
                         %th Method
                         %th Path info
@@ -143,7 +125,6 @@ getLogR = do
 
                     $forall stats stat
                         %tr
-                            %td $string.statsEntryIdent.stat$
                             %td $string.format.statsEntryDate.stat$
                             %td $string.statsEntryRequestMethod.stat$
                             %td $string.statsEntryPathInfo.stat$
@@ -155,8 +136,8 @@ getLogR = do
             |]
     where
         -- some formatting
-        format = formatTime defaultTimeLocale "%a, %d %b %Y %X (%Z)"
-        yesno b = if b then "Yes" else "No"
+        format = formatTime defaultTimeLocale "%Y%m%d%H%M%S"
+        yesno b = if b then "y" else "n"
 
 -- | Add this anywhere in a route function to have that route logged
 logRequest :: (YesodStats m,
@@ -177,26 +158,21 @@ parseRequest = do
     case mroute of
         Nothing    -> return Nothing
         Just route -> do
-            mident <- requestIdent $ toMaster route
-            case mident of
-                Nothing    -> return Nothing
-                Just ident -> do
-                    time  <- liftIO getCurrentTime
-                    req   <- waiRequest
-                    blist <- blacklist
-                    if (asString $ remoteHost req) `elem` blist
-                            then return Nothing
-                            else return $ Just StatsEntry
-                                { statsEntryIdent         = ident
-                                , statsEntryDate          = time
-                                , statsEntryRequestMethod = asString $ requestMethod req
-                                , statsEntryPathInfo      = asString $ pathInfo      req
-                                , statsEntryQueryString   = asString $ queryString   req
-                                , statsEntryServerName    = asString $ serverName    req
-                                , statsEntryServerPort    = serverPort req
-                                , statsEntryIsSecure      = isSecure   req
-                                , statsEntryRemoteHost    = asString $ remoteHost req
-                                }
+            time  <- liftIO getCurrentTime
+            req   <- waiRequest
+            blist <- blacklist
+            if (asString $ remoteHost req) `elem` blist
+                    then return Nothing
+                    else return $ Just StatsEntry
+                        { statsEntryDate          = time
+                        , statsEntryRequestMethod = asString $ requestMethod req
+                        , statsEntryPathInfo      = asString $ pathInfo      req
+                        , statsEntryQueryString   = asString $ queryString   req
+                        , statsEntryServerName    = asString $ serverName    req
+                        , statsEntryServerPort    = serverPort req
+                        , statsEntryIsSecure      = isSecure   req
+                        , statsEntryRemoteHost    = asString $ remoteHost req
+                        }
 
 asString :: B.ByteString -> String
 asString = map w2c . B.unpack

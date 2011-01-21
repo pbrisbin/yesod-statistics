@@ -20,12 +20,15 @@ module Yesod.Helpers.Stats
     ( Stats
     , getStats
     , YesodStats(..)
+    , StatsEntry(..)
     , logRequest
+    , loggedRequests
     , migrateStats
     ) where
 
 import Yesod hiding (Request)
 import Network.Wai
+import Control.Monad               (forM)
 import Data.ByteString.Internal    (w2c)
 import Data.Time.Clock             (UTCTime, getCurrentTime)
 import Data.Time.Format            (formatTime)
@@ -55,24 +58,59 @@ data Stats = Stats
 getStats :: a -> Stats
 getStats = const Stats
 
-class (Yesod m, YesodPersist m, PersistBackend (YesodDB m (GHandler Stats m))) 
-    => YesodStats m where requestIdent :: Route m -> GHandler s m (Maybe String)
+class (Yesod m, 
+       YesodPersist m, 
+       PersistBackend (YesodDB m (GHandler Stats m))) => YesodStats m where 
+    -- | A unique \"friendly\" identifier to use for each route logged,
+    --   setting this to 'Nothing' will prevent the route from being
+    --   logged at all.
+    requestIdent :: Route m -> GHandler s m (Maybe String)
+
+    -- | This is the main \"view stats\" page. Easiest thing to do is
+    --   import some pre-built widgets from
+    --   "Yesod.Helpers.Stats.Widgets" and throw them in defaultLayout.
+    viewLayout   :: GWidget s m ()
 
 mkYesodSub "Stats" 
     [ ClassP ''YesodStats [ VarT $ mkName "master" ]
     ] 
     [$parseRoutes|
-    / StatsR GET
+    /    StatsR GET
+    /log LogR GET
     |]
 
+-- | Return all the logged requests in a list
+loggedRequests :: (YesodStats m,
+                   YesodPersist m, 
+                   PersistBackend (YesodDB m (GHandler s m)))
+               => GHandler s m [StatsEntry]
+loggedRequests = do
+    results <- runDB $ selectList [] [StatsEntryDateDesc] 0 0
+    return $ map snd results
 
--- for now just a simple table
 getStatsR :: (YesodStats m,
               YesodPersist m, 
-              PersistBackend (YesodDB m (GHandler s m)))
-          => GHandler s m RepHtml
-getStatsR = do
-    stats <- runDB $ selectList [] [StatsEntryDateDesc] 0 0
+              PersistBackend (YesodDB m (GHandler Stats m)))
+          => GHandler Stats m RepHtml
+getStatsR = defaultLayout $ do
+    tm <- liftHandler getRouteToMaster
+    cr <- liftHandler getCurrentRoute
+    setTitle $ string "Stats"
+    addHamlet [$hamlet| %h1 Stats |]
+    viewLayout
+    addHamlet [$hamlet|
+        .stats_log_link
+            %p
+                %a!href=@tm.LogR@ all requests
+        |]
+
+-- | A simple table of everything logged to date
+getLogR :: (YesodStats m,
+            YesodPersist m, 
+            PersistBackend (YesodDB m (GHandler s m)))
+        => GHandler s m RepHtml
+getLogR = do
+    stats <- loggedRequests
     defaultLayout $ do
         setTitle $ string "Logged Requests"
         addCassius [$cassius|
@@ -86,37 +124,38 @@ getStatsR = do
             |]
 
         addHamlet [$hamlet|
-        .yesod_stats
-            %h1 Logged Requests
-            %table
-                %tr
-                    %th Request id
-                    %th Date
-                    %th Method
-                    %th Path info
-                    %th Query string
-                    %th Server name
-                    %th Server port
-                    %th SSL
-                    %th Remote host
-
-                $forall stats stat
+            .yesod_stats
+                %h1 Logged Requests
+                %table
                     %tr
-                        %td $string.statsEntryIdent.snd.stat$
-                        %td $string.format.statsEntryDate.snd.stat$
-                        %td $string.statsEntryRequestMethod.snd.stat$
-                        %td $string.statsEntryPathInfo.snd.stat$
-                        %td $string.statsEntryQueryString.snd.stat$
-                        %td $string.statsEntryServerName.snd.stat$
-                        %td $string.show.statsEntryServerPort.snd.stat$
-                        %td $string.yesno.statsEntryIsSecure.snd.stat$
-                        %td $string.statsEntryRemoteHost.snd.stat$
-        |]
+                        %th Request id
+                        %th Date
+                        %th Method
+                        %th Path info
+                        %th Query string
+                        %th Server name
+                        %th Server port
+                        %th SSL
+                        %th Remote host
+
+                    $forall stats stat
+                        %tr
+                            %td $string.statsEntryIdent.stat$
+                            %td $string.format.statsEntryDate.stat$
+                            %td $string.statsEntryRequestMethod.stat$
+                            %td $string.statsEntryPathInfo.stat$
+                            %td $string.statsEntryQueryString.stat$
+                            %td $string.statsEntryServerName.stat$
+                            %td $string.show.statsEntryServerPort.stat$
+                            %td $string.yesno.statsEntryIsSecure.stat$
+                            %td $string.statsEntryRemoteHost.stat$
+            |]
     where
         -- some formatting
-        format = formatTime defaultTimeLocale "%d %b %Y %X %z"
+        format = formatTime defaultTimeLocale "%a, %d %b %Y %X (%Z)"
         yesno b = if b then "Yes" else "No"
 
+-- | Add this anywhere in a route function to have that route logged
 logRequest :: (YesodStats m,
                YesodPersist m, 
                PersistBackend (YesodDB m (GHandler s m)))

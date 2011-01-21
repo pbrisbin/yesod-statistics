@@ -61,6 +61,9 @@ getStats = const Stats
 class (Yesod m, 
        YesodPersist m, 
        PersistBackend (YesodDB m (GHandler Stats m))) => YesodStats m where 
+    -- | A list of IPs to not log (localhost, etc)
+    blacklist :: GHandler s m [String]
+
     -- | A unique \"friendly\" identifier to use for each route logged,
     --   setting this to 'Nothing' will prevent the route from being
     --   logged at all.
@@ -166,6 +169,7 @@ logRequest = do
         Just entry -> (runDB $ insert entry) >> return ()
         Nothing    -> return ()
 
+-- | todo: fix all this staircasing...
 parseRequest :: YesodStats m => GHandler s m (Maybe StatsEntry)
 parseRequest = do
     toMaster <- getRouteToMaster
@@ -179,17 +183,20 @@ parseRequest = do
                 Just ident -> do
                     time  <- liftIO getCurrentTime
                     req   <- waiRequest
-                    return $ Just StatsEntry
-                        { statsEntryIdent         = ident
-                        , statsEntryDate          = time
-                        , statsEntryRequestMethod = asString $ requestMethod req
-                        , statsEntryPathInfo      = asString $ pathInfo      req
-                        , statsEntryQueryString   = asString $ queryString   req
-                        , statsEntryServerName    = asString $ serverName    req
-                        , statsEntryServerPort    = serverPort req
-                        , statsEntryIsSecure      = isSecure   req
-                        , statsEntryRemoteHost    = asString $ remoteHost req
-                        }
+                    blist <- blacklist
+                    if (asString $ remoteHost req) `elem` blist
+                            then return Nothing
+                            else return $ Just StatsEntry
+                                { statsEntryIdent         = ident
+                                , statsEntryDate          = time
+                                , statsEntryRequestMethod = asString $ requestMethod req
+                                , statsEntryPathInfo      = asString $ pathInfo      req
+                                , statsEntryQueryString   = asString $ queryString   req
+                                , statsEntryServerName    = asString $ serverName    req
+                                , statsEntryServerPort    = serverPort req
+                                , statsEntryIsSecure      = isSecure   req
+                                , statsEntryRemoteHost    = asString $ remoteHost req
+                                }
 
 asString :: B.ByteString -> String
 asString = map w2c . B.unpack

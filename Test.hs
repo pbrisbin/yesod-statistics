@@ -32,6 +32,8 @@ instance YesodPersist TestApp where
     runDB db = fmap connPool getYesod >>= runSqlPool db
 
 instance YesodStats TestApp where
+    blacklist = return []
+
     requestIdent RootR     = return $ Just "homepage"
     requestIdent (TestR s) = return $ Just ("test_" ++ s)
     requestIdent _         = return Nothing

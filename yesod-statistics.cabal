@@ -12,10 +12,10 @@ cabal-version:       >=1.2
 
 library
   -- Modules exported by the library.
-  exposed-modules: Yesod.Helpers.Statistics
+  exposed-modules: Yesod.Helpers.Stats, Yesod.Helpers.Stats.Widgets
   
   -- Packages needed in order to build this package.
-  build-depends: base, yesod
+  build-depends: base, yesod, bytestring, template-haskell, old-locale, persistent, time, wai, regex-posix
 
   ghc-options: -Wall
   

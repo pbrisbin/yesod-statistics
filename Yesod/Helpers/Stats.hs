@@ -1,5 +1,4 @@
 {-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -71,7 +70,7 @@ logRequest :: (YesodStats m,
 logRequest = do
     mentry <- parseRequest
     case mentry of
-        Just entry -> (runDB $ insert entry) >> return ()
+        Just entry -> runDB (insert entry) >> return ()
         Nothing    -> return ()
 
 -- | todo: fix all this staircasing...
@@ -85,7 +84,7 @@ parseRequest = do
             time  <- liftIO getCurrentTime
             req   <- waiRequest
             blist <- blacklist
-            if (asString $ remoteHost req) `elem` blist
+            if asString (remoteHost req) `elem` blist
                     then return Nothing
                     else return $ Just StatsEntry
                         { statsEntryDate          = time
@@ -106,4 +105,4 @@ loggedRequests :: (YesodStats m,
                    YesodPersist m, 
                    PersistBackend (YesodDB m (GHandler s m)))
                => GHandler s m [StatsEntry]
-loggedRequests = return . map snd =<< (runDB $ selectList [] [StatsEntryDateDesc] 0 0)
+loggedRequests = return . map snd =<< runDB (selectList [] [StatsEntryDateDesc] 0 0)

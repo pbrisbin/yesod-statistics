@@ -1,5 +1,4 @@
 {-# LANGUAGE QuasiQuotes      #-}
-{-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE FlexibleContexts #-}
 -------------------------------------------------------------------------------
 -- |
@@ -135,33 +134,32 @@ allRequests n = do
 
     case statsEntries of
         [] -> addHamlet [$hamlet| %em No entries found |]
-        _  -> do
-            addHamlet [$hamlet|
-                .stats_all_requests
-                    %h1 Logged Requests
-                    %table
-                        %tr
-                            %th Date
-                            %th Method
-                            %th Path info
-                            %th Query string
-                            %th Server name
-                            %th Server port
-                            %th SSL
-                            %th Remote host
+        _  -> addHamlet [$hamlet|
+            .stats_all_requests
+                %h1 Logged Requests
+                %table
+                    %tr
+                        %th Date
+                        %th Method
+                        %th Path info
+                        %th Query string
+                        %th Server name
+                        %th Server port
+                        %th SSL
+                        %th Remote host
 
-                        $forall (limit.n).statsEntries stat
-                            %tr
-                                %td $string.format.statsEntryDate.stat$
-                                %td $string.statsEntryRequestMethod.stat$
-                                %td 
-                                    %a!href=$string.statsEntryPathInfo.stat$ $string.statsEntryPathInfo.stat$
-                                %td $string.statsEntryQueryString.stat$
-                                %td $string.statsEntryServerName.stat$
-                                %td $string.show.statsEntryServerPort.stat$
-                                %td $string.yesno.statsEntryIsSecure.stat$
-                                %td $string.statsEntryRemoteHost.stat$
-                |]
+                    $forall (limit.n).statsEntries stat
+                        %tr
+                            %td $string.format.statsEntryDate.stat$
+                            %td $string.statsEntryRequestMethod.stat$
+                            %td 
+                                %a!href=$string.statsEntryPathInfo.stat$ $string.statsEntryPathInfo.stat$
+                            %td $string.statsEntryQueryString.stat$
+                            %td $string.statsEntryServerName.stat$
+                            %td $string.show.statsEntryServerPort.stat$
+                            %td $string.yesno.statsEntryIsSecure.stat$
+                            %td $string.statsEntryRemoteHost.stat$
+            |]
     where
         limit 0 = id
         limit n = take n

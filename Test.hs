@@ -1,5 +1,4 @@
 {-# LANGUAGE QuasiQuotes     #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies    #-}
 --
 -- pbrisbin 2010

@@ -6,7 +6,7 @@ A tool for logging requests and aggregating/viewing the logged data
 
 ### Stats
 
-The stats module just creates the subsite and provides to important 
+The stats module just creates the subsite and provides two important 
 functions:
 
 * `logRequest` should be placed in any route function you want to log

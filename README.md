@@ -28,7 +28,7 @@ I'll go.
 ### Usage
 
 See ./Test.hs or read the 
-[haddocks](http://pbrisbin.com/haskell/doc/html/yesod-statistics)
+[haddocks](http://pbrisbin.com/haskell/docs/html/yesod-statistics)
 
 ### Try it
 

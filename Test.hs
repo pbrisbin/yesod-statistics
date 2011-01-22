@@ -37,9 +37,9 @@ instance YesodStats TestApp where
         addHamlet [$hamlet| %h3 General statistics |]
         overallStats 
 
-        addHamlet [$hamlet| %h3 Files requested |]
-        topRequests ("foo pages", "^/test/foo.*")
-        topRequests ("bar, baz, and bat pages", "^/test/ba?")
+        addHamlet [$hamlet| %h3 Popular requests |]
+        topRequests 5 ("pages matching \"^/test/fo.+\"" , "^/test/fo.+" )
+        topRequests 5 ("pages matching \"^/test/ba./$\"", "^/test/ba./$")
 
 withConnectionPool :: MonadInvertIO m => (ConnectionPool -> m a) -> m a
 withConnectionPool = withSqlitePool "stats.s3db" 10
@@ -48,7 +48,7 @@ getRootR :: Handler RepHtml
 getRootR = do
     logRequest
 
-    let links = [ "foo", "bar", "baz", "bat" ]
+    let links = [ "foo", "foh", "bar", "baz", "batt" ]
     defaultLayout $ do
         setTitle  $ string "test homepage"
         addHamlet [$hamlet|

@@ -127,7 +127,8 @@ getLogR = do
                         %tr
                             %td $string.format.statsEntryDate.stat$
                             %td $string.statsEntryRequestMethod.stat$
-                            %td $string.statsEntryPathInfo.stat$
+                            %td 
+                                %a!href=$string.statsEntryPathInfo.stat$ $string.statsEntryPathInfo.stat$
                             %td $string.statsEntryQueryString.stat$
                             %td $string.statsEntryServerName.stat$
                             %td $string.show.statsEntryServerPort.stat$

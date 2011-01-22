@@ -14,7 +14,10 @@
 -- Import some widgets and add them to your viewLayout.
 --
 -------------------------------------------------------------------------------
-module Yesod.Helpers.Stats.Widgets where
+module Yesod.Helpers.Stats.Widgets
+    ( overallStats
+    , topRequests
+    ) where
         
 import Yesod
 
@@ -30,72 +33,70 @@ import Data.Time.Format (formatTime)
 import System.Locale    (defaultTimeLocale)
 import Text.Regex.Posix ((=~))
 
+-- | Overall statistics in a table.
 overallStats :: (YesodStats m,
                  PersistBackend (YesodDB m (GHandler s m)))
              => GWidget s m ()
 overallStats = do
-    timeNow      <- liftIO getCurrentTime
     statsEntries <- liftHandler loggedRequests
 
---    when (statsEntries == []) todo:
---        addHamlet [$hamlet| %em No entries found |]
+    case statsEntries of
+        [] -> addHamlet [$hamlet| %em No entries found |]
+        _  -> do
+            let periodFrom   = statsEntryDate $ last statsEntries
+            let allIps       = map statsEntryRemoteHost statsEntries
+            let uniqueVisits = show . length . nub       $ allIps
+            let frequentIp   = fst  . head   . frequency $ allIps
 
-    let periodFrom   = statsEntryDate $ last statsEntries
+            addHamlet [$hamlet|
+                .stats_general
+                    %table
+                        %tr
+                            %th Log period from:
+                            %td $format.periodFrom$
+                        %tr
+                            %th Unique visitors:
+                            %td $uniqueVisits$
+                        %tr
+                            %th Most frequent visitor:
+                            %td $frequentIp$
+                |]
+    where 
+        format = formatTime defaultTimeLocale "%d %b %X (%Z)"
 
-    let allIps       = map statsEntryRemoteHost statsEntries
-    let uniqueVisits = show . length . nub       $ allIps
-    let frequentIp   = fst  . head   . frequency $ allIps
-
-    addHamlet [$hamlet|
-        .stats_general
-            %table
-                %tr
-                    %th stats generated:
-                    %td $format.timeNow$
-                %tr
-                    %th log period from:
-                    %td $format.periodFrom$
-                %tr
-                    %th unique visits:
-                    %td $uniqueVisits$
-                %tr
-                    %th most frequent visitor:
-                    %td $frequentIp$
-        |]
-    where format = formatTime defaultTimeLocale "%a, %d %b %X (%Z)"
-
+-- | Display a listing of requests matching a certain regex sorted by 
+--   frequency
 topRequests :: (YesodStats m,
                 PersistBackend (YesodDB m (GHandler s m)))
-                => (String,String) -> GWidget s m ()
-topRequests (s,r) = do
+                => Int              -- ^ limit number reported (0 means unlimited)
+                -> (String,String)  -- ^ (name,regex), ex: ("media files","^/media/.*")
+                -> GWidget s m ()
+topRequests n (s,r) = do
     statsEntries <- liftHandler loggedRequests
     
---    when (statsEntries == []) todo:
---        addHamlet [$hamlet| %em No entries found |]
+    case statsEntries of
+        [] -> addHamlet [$hamlet| %em No entries found |]
+        _  -> do
+            let counts = limit n 
+                       . frequency 
+                       .  map statsEntryPathInfo
+                       $ filter (isDownloadOf r) statsEntries
 
-    let downloads = filter (isDownloadOf r) statsEntries
+            addHamlet [$hamlet|
+                .stats_top_entry
+                    %p popular $s$:
 
-    let total  = length downloads
-    let counts = frequency $ map statsEntryPathInfo downloads
+                    %table
+                        $forall counts count
+                            %tr
+                                %td $show.snd.count$
+                                %td 
+                                    %a!href=$fst.count$ $fst.count$
+                |]
+    where 
+        isDownloadOf s e = statsEntryPathInfo e =~ s :: Bool
+        limit 0          = id
+        limit n          = take n
 
-    addHamlet [$hamlet|
-        .stats_top_entry
-            .stats_top_entry_total
-                %table
-                    %tr
-                        %th total $s$ downloaded: 
-                        %td $show.total$
-
-            .stats_top_entry_counts
-                %table
-                    $forall counts count
-                        %tr
-                            %td $show.snd.count$
-                            %td 
-                                %a!href=$fst.count$ $fst.count$
-        |]
-    where isDownloadOf s e = statsEntryPathInfo e =~ s :: Bool
-
--- | Ex: frequency [a, b, c, b, b, a] -> [(b, 3), (a, 2), (c, 1)]
 frequency :: (Ord a) => [a] -> [(a, Int)]
 frequency = reverse . sortBy (comparing snd) . map (head &&& length) . group . sort

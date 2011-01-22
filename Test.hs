@@ -20,9 +20,9 @@ data TestApp = TestApp { connPool :: ConnectionPool }
 type Handler = GHandler TestApp TestApp
 
 mkYesod "TestApp" [$parseRoutes| 
-/             RootR GET 
-/test/#String TestR GET
-/stats StatsR Stats getStats
+/             RootR  GET 
+/test/#String TestR  GET
+/stats        StatsR GET
 |]
 
 instance Yesod TestApp where approot _ = ""
@@ -31,23 +31,13 @@ instance YesodPersist TestApp where
     type YesodDB TestApp = SqlPersist
     runDB db = fmap connPool getYesod >>= runSqlPool db
 
-instance YesodStats TestApp where
-    blacklist  = return []
-    viewLayout = do
-        addHamlet [$hamlet| %h3 General statistics |]
-        overallStats 
-
-        addHamlet [$hamlet| %h3 Popular requests |]
-        topRequests 5 ("pages matching \"^/test/fo.+\"" , "^/test/fo.+" )
-        topRequests 5 ("pages matching \"^/test/ba./$\"", "^/test/ba./$")
+instance YesodStats TestApp where blacklist  = return []
 
 withConnectionPool :: MonadInvertIO m => (ConnectionPool -> m a) -> m a
 withConnectionPool = withSqlitePool "stats.s3db" 10
 
 getRootR :: Handler RepHtml
 getRootR = do
-    logRequest
-
     let links = [ "foo", "foh", "bar", "baz", "batt" ]
     defaultLayout $ do
         setTitle  $ string "test homepage"
@@ -59,7 +49,7 @@ getRootR = do
                 Welcome to my stats test page. Please make some requests 
                 by clicking on the links below. After doing so, head to 
                 the 
-                %a!href="/stats" stats page
+                %a!href=@StatsR@ stats page
                 \ and see the collected data.
 
             %h3 Links
@@ -75,6 +65,15 @@ getTestR name = do
 
     setMessage [$hamlet| %em your request for $string.name$ was logged |]
     redirect RedirectTemporary RootR
+
+getStatsR :: Handler RepHtml
+getStatsR = defaultLayout $ do
+    addHamlet [$hamlet| %h3 General statistics |]
+    overallStats 
+
+    addHamlet [$hamlet| %h3 Popular requests |]
+    topRequests 5 ("pages matching \"^/test/fo.+\"" , "^/test/fo.+" )
+    topRequests 5 ("pages matching \"^/test/ba./$\"", "^/test/ba./$")
 
 main :: IO ()
 main = putStrLn "Loaded" >> withCommentTest (run 3000)

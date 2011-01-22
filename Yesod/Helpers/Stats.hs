@@ -33,14 +33,10 @@ module Yesod.Helpers.Stats
 
 import Yesod hiding (Request)
 import Network.Wai
-import Control.Monad               (forM)
 import Data.ByteString.Internal    (w2c)
 import Data.Time.Clock             (UTCTime, getCurrentTime)
-import Data.Time.Format            (formatTime)
 import Database.Persist.TH         (share2)
 import Database.Persist.GenericSql (mkMigrate)
-import System.Locale               (defaultTimeLocale)
-import Language.Haskell.TH.Syntax hiding (lift)
 
 import qualified Data.ByteString as B
 
@@ -55,8 +51,6 @@ StatsEntry
     isSecure      Bool
     remoteHost    String
 |]
-
-data Stats = Stats
 
 class (Yesod m, YesodPersist m) => YesodStats m where 
     -- | A list of Remote hosts to not log (localhost, etc)
@@ -76,11 +70,10 @@ logRequest = do
 -- | todo: fix all this staircasing...
 parseRequest :: YesodStats m => GHandler s m (Maybe StatsEntry)
 parseRequest = do
-    toMaster <- getRouteToMaster
     mroute   <- getCurrentRoute
     case mroute of
         Nothing    -> return Nothing
-        Just route -> do
+        Just _ -> do
             time  <- liftIO getCurrentTime
             req   <- waiRequest
             blist <- blacklist

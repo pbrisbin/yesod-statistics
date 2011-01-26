@@ -47,7 +47,7 @@ overallStats :: (YesodStats m,
                  PersistBackend (YesodDB m (GHandler s m)))
              => GWidget s m ()
 overallStats = do
-    statsEntries <- liftHandler loggedRequests
+    statsEntries <- liftHandler $ loggedRequests 0
 
     case statsEntries of
         [] -> addHamlet [$hamlet| %em No entries found |]
@@ -95,7 +95,7 @@ topRequests :: (YesodStats m,
                 -> (String,String)  -- ^ (name,regex), ex: ("media files","^/media/.*")
                 -> GWidget s m ()
 topRequests n (s,r) = do
-    statsEntries <- liftHandler loggedRequests
+    statsEntries <- liftHandler $ loggedRequests 0
     
     case statsEntries of
         [] -> addHamlet [$hamlet| %em No entries found |]
@@ -127,10 +127,10 @@ frequency = reverse . sortBy (comparing snd) . map (head &&& length) . group . s
 -- | Present all logged requests in a table
 allRequests :: (YesodStats m,
                 PersistBackend (YesodDB m (GHandler s m))) 
-            => Int -- ^ limit
+            => Int -- ^ limit resultset
             -> GWidget s m ()
 allRequests n = do
-    statsEntries <- liftHandler loggedRequests
+    statsEntries <- liftHandler $ loggedRequests n
 
     case statsEntries of
         [] -> addHamlet [$hamlet| %em No entries found |]
@@ -148,7 +148,7 @@ allRequests n = do
                         %th SSL
                         %th Remote host
 
-                    $forall (limit.n).statsEntries stat
+                    $forall statsEntries stat
                         %tr
                             %td $string.format.statsEntryDate.stat$
                             %td $string.statsEntryRequestMethod.stat$
@@ -161,7 +161,5 @@ allRequests n = do
                             %td $string.statsEntryRemoteHost.stat$
             |]
     where
-        limit 0 = id
-        limit n = take n
         format  = formatTime defaultTimeLocale "%Y%m%d%H%M%S"
         yesno q = if q then "y" else "n"

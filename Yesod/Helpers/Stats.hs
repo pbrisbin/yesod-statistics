@@ -67,35 +67,32 @@ logRequest = do
         Just entry -> runDB (insert entry) >> return ()
         Nothing    -> return ()
 
--- | todo: fix all this staircasing...
 parseRequest :: YesodStats m => GHandler s m (Maybe StatsEntry)
 parseRequest = do
-    mroute   <- getCurrentRoute
-    case mroute of
-        Nothing    -> return Nothing
-        Just _ -> do
-            time  <- liftIO getCurrentTime
-            req   <- waiRequest
-            blist <- blacklist
-            if asString (remoteHost req) `elem` blist
-                    then return Nothing
-                    else return $ Just StatsEntry
-                        { statsEntryDate          = time
-                        , statsEntryRequestMethod = asString $ requestMethod req
-                        , statsEntryPathInfo      = asString $ pathInfo      req
-                        , statsEntryQueryString   = asString $ queryString   req
-                        , statsEntryServerName    = asString $ serverName    req
-                        , statsEntryServerPort    = serverPort req
-                        , statsEntryIsSecure      = isSecure   req
-                        , statsEntryRemoteHost    = asString $ remoteHost req
-                        }
+    time  <- liftIO getCurrentTime
+    req   <- waiRequest
+    blist <- blacklist
+    if asString (remoteHost req) `elem` blist
+        then return Nothing
+        else return $ Just StatsEntry
+            { statsEntryDate          = time
+            , statsEntryRequestMethod = asString $ requestMethod req
+            , statsEntryPathInfo      = asString $ pathInfo      req
+            , statsEntryQueryString   = asString $ queryString   req
+            , statsEntryServerName    = asString $ serverName    req
+            , statsEntryServerPort    = serverPort req
+            , statsEntryIsSecure      = isSecure   req
+            , statsEntryRemoteHost    = asString $ remoteHost req
+            }
 
 asString :: B.ByteString -> String
 asString = map w2c . B.unpack
 
--- | Return all the logged requests in a list
+-- | Return all the logged requests in a list ordered by date 
+--   descending.
 loggedRequests :: (YesodStats m,
                    YesodPersist m, 
                    PersistBackend (YesodDB m (GHandler s m)))
-               => GHandler s m [StatsEntry]
-loggedRequests = return . map snd =<< runDB (selectList [] [StatsEntryDateDesc] 0 0)
+               => Int -- ^ limit resultset
+               -> GHandler s m [StatsEntry]
+loggedRequests n = return . map snd =<< runDB (selectList [] [StatsEntryDateDesc] n 0)

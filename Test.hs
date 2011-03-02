@@ -1,5 +1,7 @@
-{-# LANGUAGE QuasiQuotes     #-}
-{-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 --
 -- pbrisbin 2010
 --
@@ -11,7 +13,8 @@ import Yesod.Helpers.Stats
 import Yesod.Helpers.Stats.Widgets
 
 import Yesod
-import Network.Wai.Handler.SimpleServer (run)
+import Text.Blaze (toHtml)
+import Network.Wai.Handler.Warp (run)
 import Database.Persist.Sqlite
 import Database.Persist.GenericSql
 
@@ -28,49 +31,49 @@ instance Yesod TestApp where approot _ = ""
 
 instance YesodPersist TestApp where
     type YesodDB TestApp = SqlPersist
-    runDB db = fmap connPool getYesod >>= runSqlPool db
+    runDB db = liftIOHandler $ fmap connPool getYesod >>= runSqlPool db
 
 instance YesodStats TestApp where blacklist  = return []
 
-withConnectionPool :: MonadInvertIO m => (ConnectionPool -> m a) -> m a
+withConnectionPool :: MonadPeelIO m => (ConnectionPool -> m a) -> m a
 withConnectionPool = withSqlitePool "stats.s3db" 10
 
 getRootR :: Handler RepHtml
 getRootR = do
     let links = [ "foo", "foh", "bar", "baz", "batt" ]
     defaultLayout $ do
-        setTitle  $ string "test homepage"
+        setTitle  $ toHtml ("test homepage" :: String)
         addHamlet [$hamlet|
-            %h1 Test Page
-            %hr
+            <h1>Test Page
+            <hr>
 
-            %p 
+            <p>
                 Welcome to my stats test page. Please make some requests 
                 by clicking on the links below. After doing so, head to 
                 the 
-                %a!href=@StatsR@ stats page
+                <a href="@{StatsR}">stats page
                 \ and see the collected data.
 
-            %h3 Links
+            <h3>Links
 
-            $forall links link
-                %p
-                    %a!href=@TestR.link@ $string.link$
-            |]
+            $forall link <- links
+                <p>
+                    <a href="@{TestR link}">#{link}
+        |]
 
 getTestR :: String -> Handler RepHtml
 getTestR name = do
     logRequest
 
-    setMessage [$hamlet| %em your request for $string.name$ was logged |]
+    setMessage [$hamlet| <em>your request for #{name} was logged |]
     redirect RedirectTemporary RootR
 
 getStatsR :: Handler RepHtml
 getStatsR = defaultLayout $ do
-    addHamlet [$hamlet| %h3 General statistics |]
+    addHamlet [$hamlet| <h3>General statistics |]
     overallStats 
 
-    addHamlet [$hamlet| %h3 Popular requests |]
+    addHamlet [$hamlet| <h3>Popular requests |]
     topRequests 5 ("pages matching \"^/test/fo.+\"" , "^/test/fo.+" )
     topRequests 5 ("pages matching \"^/test/ba./$\"", "^/test/ba./$")
 

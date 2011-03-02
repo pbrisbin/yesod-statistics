@@ -59,7 +59,7 @@ class (Yesod m, YesodPersist m) => YesodStats m where
 -- | Add this anywhere in a route function to have that route logged
 logRequest :: (YesodStats m,
                YesodPersist m, 
-               PersistBackend (YesodDB m (GHandler s m)))
+               PersistBackend (YesodDB m (GGHandler s m IO)))
            => GHandler s m ()
 logRequest = do
     mentry <- parseRequest
@@ -72,7 +72,7 @@ parseRequest = do
     time  <- liftIO getCurrentTime
     req   <- waiRequest
     blist <- blacklist
-    if asString (remoteHost req) `elem` blist
+    if show (remoteHost req) `elem` blist
         then return Nothing
         else return $ Just StatsEntry
             { statsEntryDate          = time
@@ -82,7 +82,7 @@ parseRequest = do
             , statsEntryServerName    = asString $ serverName    req
             , statsEntryServerPort    = serverPort req
             , statsEntryIsSecure      = isSecure   req
-            , statsEntryRemoteHost    = asString $ remoteHost req
+            , statsEntryRemoteHost    = show $ remoteHost req
             }
 
 asString :: B.ByteString -> String
@@ -92,7 +92,7 @@ asString = map w2c . B.unpack
 --   descending.
 loggedRequests :: (YesodStats m,
                    YesodPersist m, 
-                   PersistBackend (YesodDB m (GHandler s m)))
+                   PersistBackend (YesodDB m (GGHandler s m IO)))
                => Int -- ^ limit resultset
                -> GHandler s m [StatsEntry]
 loggedRequests n = return . map snd =<< runDB (selectList [] [StatsEntryDateDesc] n 0)
